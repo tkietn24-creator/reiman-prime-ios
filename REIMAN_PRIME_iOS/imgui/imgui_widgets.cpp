@@ -32,9 +32,15 @@ Index of this file:
 #define _CRT_SECURE_NO_WARNINGS
 #endif
 
+#ifndef _WIN32
+#define strcpy_s(dst, src) strcpy(dst, src)
+#endif
+
 #include "imgui.h"
 #include <map>
 #include <string>
+#include "imgui_settings.h"
+#include "color.h"
 #ifndef IMGUI_DISABLE
 
 #ifndef IMGUI_DEFINE_MATH_OPERATORS
