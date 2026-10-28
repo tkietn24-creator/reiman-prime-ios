@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>REIMAN PRIME - ImGui GUI Visualizer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Poppins:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: radial-gradient(circle at center, #14171c 0%, #08090b 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Poppins', 'Inter', sans-serif;
+            color: #ffffff;
+            overflow: hidden;
+        }
+
+        .header-bar {
+            margin-bottom: 24px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .badge-tag {
+            background: rgba(255, 0, 0, 0.15);
+            border: 1px solid rgba(255, 0, 0, 0.5);
+            color: #ff3333;
+            font-family: 'Orbitron', monospace;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            padding: 5px 14px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.3);
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .action-btn {
+            background: #1a1c22;
+            color: #bbb;
+            border: 1px solid #2a2d36;
+            padding: 6px 14px;
+            font-size: 12px;
+            font-weight: 500;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .action-btn:hover {
+            background: #252830;
+            color: #fff;
+            border-color: #ff2222;
+            box-shadow: 0 0 10px rgba(255, 34, 34, 0.2);
+        }
+
+        /* The Exact 497x497 Frameless ImGui Window */
+        .imgui-window {
+            width: 497px;
+            height: 497px;
+            background: rgba(10, 10, 10, 0.94);
+            border-radius: 10px;
+            border: 1px solid rgba(40, 40, 40, 0.9);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9), 0 0 40px rgba(255, 0, 0, 0.12);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            backdrop-filter: blur(12px);
+        }
+
+        /* Background Particle Canvas */
+        #bgCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .content-layer {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Top Bar */
+        .window-header {
+            height: 52px;
+            border-bottom: 2px solid #282828;
+            background: rgba(10, 10, 10, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+        }
+
+        .logo-box {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+        }
+
+        .brand-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 20px;
+            font-weight: 900;
+            letter-spacing: 2px;
+            color: #ff2222;
+            text-shadow: 0 0 12px rgba(255, 0, 0, 0.8), 0 0 25px rgba(255, 0, 0, 0.4);
+            display: inline-block;
+        }
+
+        .brand-version {
+            font-family: 'Orbitron', monospace;
+            font-size: 12px;
+            font-weight: 700;
+            color: #ff3333;
+            text-shadow: 0 0 8px rgba(255, 0, 0, 0.7);
+        }
+
+        .status-badge {
+            font-size: 11px;
+            color: #888;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #00ff66;
+            box-shadow: 0 0 8px #00ff66;
+        }
+
+        /* Body Viewports */
+        .view-screen {
+            flex: 1;
+            display: none;
+            position: relative;
+        }
+
+        .view-screen.active {
+            display: flex;
+        }
+
+        /* Screen 1: Login State (menu_state == 0) */
+        .login-screen {
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 30px;
+        }
+
+        .login-hero {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+
+        .typing-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 26px;
+            font-weight: 900;
+            letter-spacing: 3px;
+            color: #ff1a1a;
+            text-shadow: 0 0 20px rgba(255, 0, 0, 0.9);
+            min-height: 38px;
+        }
+
+        .login-sub {
+            font-size: 12px;
+            color: #666;
+            letter-spacing: 1px;
+            margin-top: 4px;
+        }
+
+        .login-form {
+            width: 290px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .imgui-input-group {
+            position: relative;
+            background: #111215;
+            border: 1px solid #22242a;
+            border-radius: 6px;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            transition: all 0.2s ease;
+        }
+
+        .imgui-input-group:focus-within {
+            border-color: #ff2222;
+            box-shadow: 0 0 10px rgba(255, 0, 0, 0.25);
+        }
+
+        .imgui-input-group svg {
+            width: 16px;
+            height: 16px;
+            fill: #555;
+            margin-right: 10px;
+        }
+
+        .imgui-input {
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #fff;
+            font-family: 'Poppins', sans-serif;
+            font-size: 13px;
+            width: 100%;
+        }
+
+        .imgui-input::placeholder {
+            color: #555;
+        }
+
+        .login-btn {
+            background: linear-gradient(135deg, #d40000 0%, #990000 100%);
+            color: #ffffff;
+            border: none;
+            border-radius: 6px;
+            height: 40px;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            cursor: pointer;
+            margin-top: 6px;
+            transition: all 0.2s;
+            box-shadow: 0 4px 15px rgba(255, 0, 0, 0.3);
+        }
+
+        .login-btn:hover {
+            background: linear-gradient(135deg, #ff1a1a 0%, #b30000 100%);
+            box-shadow: 0 4px 25px rgba(255, 0, 0, 0.5);
+            transform: translateY(-1px);
+        }
+
+        .register-btn {
+            background: #17181d;
+            color: #aaa;
+            border: 1px solid #262830;
+            border-radius: 6px;
+            height: 40px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .register-btn:hover {
+            color: #fff;
+            border-color: #444;
+            background: #20222a;
+        }
+
+        /* Screen 2: Main Menu State (menu_state == 1) */
+        .dashboard-screen {
+            flex-direction: row;
+            height: calc(497px - 52px - 28px);
+        }
+
+        /* Sidebar Tabs (122px) */
+        .sidebar-tabs {
+            width: 122px;
+            border-right: 2px solid #282828;
+            background: rgba(14, 14, 16, 0.6);
+            display: flex;
+            flex-direction: column;
+            padding: 12px 8px;
+            gap: 8px;
+        }
+
+        .tab-btn {
+            background: #101114;
+            border: 1px solid #1a1c22;
+            color: #888c99;
+            height: 38px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            gap: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .tab-btn svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+
+        .tab-btn:hover {
+            color: #eee;
+            background: #181a20;
+            border-color: #2c2f3a;
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(90deg, rgba(255, 0, 0, 0.2) 0%, rgba(255, 0, 0, 0.05) 100%);
+            border-color: #ff2222;
+            color: #ffffff;
+            box-shadow: 0 0 12px rgba(255, 0, 0, 0.2);
+        }
+
+        /* Content Area (375px) */
+        .tab-viewport {
+            flex: 1;
+            padding: 16px 18px;
+            overflow-y: auto;
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .tab-viewport.active {
+            display: flex;
+        }
+
+        .section-header {
+            font-size: 11px;
+            font-weight: 700;
+            color: #ff3333;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            border-bottom: 1px solid #20222a;
+            padding-bottom: 6px;
+            margin-bottom: 2px;
+        }
+
+        /* ImGui Style Checkbox Item */
+        .imgui-checkbox-row {
+            background: rgba(17, 17, 19, 0.7);
+            border: 1px solid #18191f;
+            border-radius: 6px;
+            padding: 9px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .imgui-checkbox-row:hover {
+            border-color: #ff2222;
+            background: rgba(25, 25, 30, 0.8);
+        }
+
+        .chk-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .custom-chk {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+            background: #222225;
+            border: 1px solid #36363a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .custom-chk.checked {
+            background: #ff0000;
+            border-color: #ff3333;
+            box-shadow: 0 0 8px rgba(255, 0, 0, 0.6);
+        }
+
+        .custom-chk svg {
+            width: 11px;
+            height: 11px;
+            fill: #fff;
+            display: none;
+        }
+
+        .custom-chk.checked svg {
+            display: block;
+        }
+
+        .chk-label {
+            font-size: 12px;
+            font-weight: 500;
+            color: #ddd;
+        }
+
+        .chk-tag {
+            font-size: 10px;
+            color: #ff6666;
+            background: rgba(255, 0, 0, 0.1);
+            padding: 2px 7px;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 0, 0, 0.2);
+        }
+
+        .keybind-pill {
+            background: #181a20;
+            border: 1px solid #2c2f3a;
+            color: #aaa;
+            font-family: monospace;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        /* Bottom Status Bar */
+        .bottom-bar {
+            height: 28px;
+            background: #08080a;
+            border-top: 1px solid #202228;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            font-size: 11px;
+        }
+
+        .memory-log {
+            font-family: 'Inter', monospace;
+            color: #ff3333;
+            font-weight: 600;
+            text-shadow: 0 0 8px rgba(255, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .fps-counter {
+            color: #555;
+            font-family: monospace;
+            font-size: 10px;
+        }
+
+        /* Toast Notification Popup */
+        .toast-notif {
+            position: absolute;
+            top: 60px;
+            right: 15px;
+            background: #15161b;
+            border: 1px solid #ff2222;
+            border-left: 4px solid #ff0000;
+            border-radius: 6px;
+            padding: 8px 14px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 15px rgba(255, 0, 0, 0.3);
+            z-index: 100;
+            transform: translateX(120%);
+            transition: transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+        }
+
+        .toast-notif.show {
+            transform: translateX(0);
+        }
+
+        .toast-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: #ff3333;
+            text-transform: uppercase;
+        }
+
+        .toast-msg {
+            font-size: 12px;
+            color: #eee;
+            margin-top: 2px;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0e0f12;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #252830;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #ff2222;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header-bar">
+        <span class="badge-tag">REIMAN PRIME DirectX11 + ImGui v1.89.2</span>
+        <div class="quick-actions">
+            <button class="action-btn" onclick="toggleState(0)">Auth State</button>
+            <button class="action-btn" onclick="toggleState(1)">Menu State</button>
+            <button class="action-btn" onclick="triggerNotif('REIMAN PRIME', 'Emulator Attached: HD-Player.exe')">Test Notification</button>
+        </div>
+    </div>
+
+    <!-- The 497x497 Frameless ImGui Window -->
+    <div class="imgui-window" id="imguiWindow">
+        <canvas id="bgCanvas"></canvas>
+
+        <div class="content-layer">
+            <!-- Header Bar -->
+            <div class="window-header">
+                <div class="logo-box">
+                    <span class="brand-title">REIMAN PRIME</span>
+                    <span class="brand-version">V1.0</span>
+                </div>
+                <div class="status-badge">
+                    <span class="status-dot"></span>
+                    <span>ONLINE</span>
+                </div>
+            </div>
+
+            <!-- Toast Notification -->
+            <div class="toast-notif" id="toastBox">
+                <div class="toast-title" id="toastTitle">REIMAN PRIME</div>
+                <div class="toast-msg" id="toastMsg">Login : Success!</div>
+            </div>
+
+            <!-- STATE 0: LOGIN SCREEN -->
+            <div class="view-screen login-screen active" id="loginScreen">
+                <div class="login-hero">
+                    <div class="typing-title" id="typingTitle">REIMAN PRIME</div>
+                    <div class="login-sub">CLIENT AUTHENTICATION</div>
+                </div>
+
+                <div class="login-form">
+                    <div class="imgui-input-group">
+                        <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                        <input type="text" class="imgui-input" placeholder="Username" value="Admin">
+                    </div>
+                    <div class="imgui-input-group">
+                        <svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+                        <input type="password" class="imgui-input" placeholder="Password" value="••••••••">
+                    </div>
+                    <div class="imgui-input-group">
+                        <svg viewBox="0 0 24 24"><path d="M12.65 10C11.83 7.67 9.61 6 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6c2.61 0 4.83-1.67 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
+                        <input type="text" class="imgui-input" placeholder="License Key" value="PRIME-XK99-ROOT">
+                    </div>
+
+                    <button class="login-btn" onclick="executeLogin()">LOGIN</button>
+                    <button class="register-btn" onclick="openDiscord()">GET KEY (DISCORD)</button>
+                </div>
+            </div>
+
+            <!-- STATE 1: DASHBOARD SCREEN -->
+            <div class="view-screen dashboard-screen" id="dashboardScreen">
+                <!-- Sidebar -->
+                <div class="sidebar-tabs">
+                    <button class="tab-btn active" onclick="switchTab(0)">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/></svg>
+                        <span>Aim</span>
+                    </button>
+                    <button class="tab-btn" onclick="switchTab(1)">
+                        <svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+                        <span>Esp</span>
+                    </button>
+                    <button class="tab-btn" onclick="switchTab(2)">
+                        <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+                        <span>Misc</span>
+                    </button>
+                    <button class="tab-btn" onclick="switchTab(3)">
+                        <svg viewBox="0 0 24 24"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/></svg>
+                        <span>Setting</span>
+                    </button>
+                </div>
+
+                <!-- Tab 0: Aim -->
+                <div class="tab-viewport active" id="tabView0">
+                    <div class="section-header">AIMBOT CONTROLS</div>
+                    <div class="imgui-checkbox-row" onclick="toggleChk(this, 'Aimbot Head Pro', 'Apply In Each Game')">
+                        <div class="chk-left">
+                            <div class="custom-chk"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
+                            <span class="chk-label">Aimbot Head Pro</span>
+                        </div>
+                        <div style="display:flex; gap:6px; align-items:center;">
+                            <span class="chk-tag">Each Game</span>
+                            <span class="keybind-pill">VK_F4</span>
+                        </div>
+                    </div>
+                    <div class="imgui-checkbox-row" onclick="toggleChk(this, 'Aimbot Colider', 'Apply In Lobby')">
+                        <div class="chk-left">
+                            <div class="custom-chk"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
+                            <span class="chk-label">Aimbot Colider</span>
+                        </div>
+                        <span class="chk-tag">Lobby</span>
+                    </div>
+                </div>
+
+                <!-- Tab 1: Esp -->
+                <div class="tab-viewport" id="tabView1">
+                    <div class="section-header">VISUALS / ESP / CHAMS</div>
+                    <div class="imgui-checkbox-row" onclick="toggleChk(this, 'Connect Chams', 'Open In Emulator')">
+                        <div class="chk-left">
+                            <div class="custom-chk"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
+                            <span class="chk-label">Connect Chams</span>
+                        </div>
+                        <span class="chk-tag">Emulator</span>
+                    </div>
+                    <div class="imgui-checkbox-row" onclick="toggleChk(this, 'Chams Menu', 'Open In Emulator')">
+                        <div class="chk-left">
+                            <div class="custom-chk"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
+                            <span class="chk-label">Chams Menu</span>
+                        </div>
+                        <span class="chk-tag">menuhhtr.dll</span>
+                    </div>
+                    <div class="imgui-checkbox-row" onclick="toggleChk(this, 'Chams 3D', 'Open In Emulator')">
+                        <div class="chk-left">
+                            <div class="custom-chk"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
+                            <span class="chk-label">Chams 3D</span>
+                        </div>
+                        <span class="chk-tag">Pipe Sync</span>
+                    </div>
+                </div>
+
+                <!-- Tab 2: Misc -->
+                <div class="tab-viewport" id="tabView2">
+                    <div class="section-header">EXPLOITS & BYPASS</div>
+                    <div class="imgui-checkbox-row" onclick="toggleChk(this, 'Female Damage Fix', 'Apply In Login')">
+                        <div class="chk-left">
+                            <div class="custom-chk"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
+                            <span class="chk-label">Female Damage Fix</span>
+                        </div>
+                        <span class="chk-tag">Login Safe</span>
+                    </div>
+                    <div class="imgui-checkbox-row" onclick="toggleChk(this, 'Camera Left', 'Apply In Training')">
+                        <div class="chk-left">
+                            <div class="custom-chk"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
+                            <span class="chk-label">Camera Left</span>
+                        </div>
+                        <div style="display:flex; gap:6px; align-items:center;">
+                            <span class="chk-tag">Training</span>
+                            <span class="keybind-pill">VK_F3</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 3: Setting -->
+                <div class="tab-viewport" id="tabView3">
+                    <div class="section-header">APPLICATION SETTINGS</div>
+                    <div class="imgui-checkbox-row" onclick="toggleChk(this, 'Stream Mode', 'Hide From OBS / Discord')">
+                        <div class="chk-left">
+                            <div class="custom-chk"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
+                            <span class="chk-label">Stream Mode</span>
+                        </div>
+                        <span class="chk-tag">OBS Bypass</span>
+                    </div>
+                    <div class="imgui-checkbox-row" onclick="toggleChk(this, 'Reset Guest', 'Apply In Login')">
+                        <div class="chk-left">
+                            <div class="custom-chk"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
+                            <span class="chk-label">Reset Guest</span>
+                        </div>
+                        <span class="chk-tag">ID Clean</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Status Bar -->
+            <div class="bottom-bar">
+                <div class="memory-log" id="memoryLogDisplay">Status: Ready</div>
+                <div class="fps-counter">ImGui: 60.0 FPS | DX11</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Canvas Particle & Triangle Background Animation (dot_draw & Trinage_background)
+        const canvas = document.getElementById('bgCanvas');
+        const ctx = canvas.getContext('2d');
+        let width = canvas.width = 497;
+        let height = canvas.height = 497;
+
+        const points = [];
+        const numPoints = 28;
+
+        for (let i = 0; i < numPoints; i++) {
+            points.push({
+                x: Math.random() * width,
+                y: Math.random() * height,
+                vx: (Math.random() - 0.5) * 0.8,
+                vy: (Math.random() - 0.5) * 0.8,
+                radius: Math.random() * 2 + 1
+            });
+        }
+
+        function drawParticles() {
+            ctx.clearRect(0, 0, width, height);
+
+            // Connect nearby points to simulate Trinage_background
+            for (let i = 0; i < points.length; i++) {
+                for (let j = i + 1; j < points.length; j++) {
+                    const dx = points[i].x - points[j].x;
+                    const dy = points[i].y - points[j].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < 90) {
+                        ctx.beginPath();
+                        ctx.moveTo(points[i].x, points[i].y);
+                        ctx.lineTo(points[j].x, points[j].y);
+                        ctx.strokeStyle = `rgba(255, 0, 0, ${(1 - dist / 90) * 0.15})`;
+                        ctx.lineWidth = 0.8;
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            // Draw dots (dot_draw)
+            for (let p of points) {
+                p.x += p.vx;
+                p.y += p.vy;
+
+                if (p.x < 0 || p.x > width) p.vx *= -1;
+                if (p.y < 0 || p.y > height) p.vy *= -1;
+
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 40, 40, 0.4)';
+                ctx.fill();
+            }
+
+            requestAnimationFrame(drawParticles);
+        }
+        drawParticles();
+
+        // Screen State Switching
+        function toggleState(state) {
+            const login = document.getElementById('loginScreen');
+            const dash = document.getElementById('dashboardScreen');
+            if (state === 0) {
+                login.classList.add('active');
+                dash.classList.remove('active');
+                setMemoryLog('Status: Awaiting Login...');
+            } else {
+                login.classList.remove('active');
+                dash.classList.add('active');
+                setMemoryLog('Status: Authenticated');
+            }
+        }
+
+        function executeLogin() {
+            setMemoryLog('Authenticating session...');
+            triggerNotif('REIMAN PRIME', 'Login : Success!');
+            setTimeout(() => {
+                toggleState(1);
+                setMemoryLog('Login: Success!');
+            }, 600);
+        }
+
+        function openDiscord() {
+            window.open('https://discord.gg/vzKWFcMqxc', '_blank');
+        }
+
+        // Sidebar Tabs Switcher
+        function switchTab(index) {
+            const buttons = document.querySelectorAll('.tab-btn');
+            const views = document.querySelectorAll('.tab-viewport');
+
+            buttons.forEach((b, i) => {
+                b.classList.toggle('active', i === index);
+            });
+            views.forEach((v, i) => {
+                v.classList.toggle('active', i === index);
+            });
+        }
+
+        // Checkbox Toggle & Status Logger
+        function toggleChk(row, feature, note) {
+            const box = row.querySelector('.custom-chk');
+            const isChecked = box.classList.toggle('checked');
+            const status = isChecked ? 'Activated' : 'Disabled';
+            setMemoryLog(`${feature} : ${status}!`);
+            triggerNotif('REIMAN PRIME', `${feature} : ${status}!`);
+        }
+
+        function setMemoryLog(msg) {
+            document.getElementById('memoryLogDisplay').textContent = msg;
+        }
+
+        // Notification System
+        let notifTimeout;
+        function triggerNotif(title, msg) {
+            const box = document.getElementById('toastBox');
+            document.getElementById('toastTitle').textContent = title;
+            document.getElementById('toastMsg').textContent = msg;
+            box.classList.add('show');
+            clearTimeout(notifTimeout);
+            notifTimeout = setTimeout(() => {
+                box.classList.remove('show');
+            }, 2500);
+        }
+    </script>
+</body>
+</html>

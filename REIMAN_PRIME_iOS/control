@@ -1,0 +1,9 @@
+Package: com.reimanprime.iosmenu
+Name: REIMAN PRIME iOS
+Depends: mobilesubstrate
+Version: 2.4.0
+Architecture: iphoneos-arm64
+Description: REIMAN PRIME Cyberpunk ImGui Mod Menu for iOS
+Maintainer: tkietn
+Author: tkietn
+Section: Tweaks

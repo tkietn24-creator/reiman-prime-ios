@@ -1,0 +1,23 @@
+# Visual Studio & Windows temporary files
+.vs/
+Debug/
+Release/
+x64/
+*.exe
+*.obj
+*.o
+*.pdb
+*.ilk
+*.suo
+*.user
+*.log
+
+# Theos build artifacts
+.theos/
+packages/
+*.deb
+
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store

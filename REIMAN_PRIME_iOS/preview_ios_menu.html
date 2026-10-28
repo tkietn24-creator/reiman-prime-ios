@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>REIMAN PRIME - iOS ImGui Live Simulation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            background: #0d0f12 url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><path d="M0 0h40v40H0z" fill="none"/><path d="M40 0H0v40" fill="none" stroke="%231a1e24" stroke-width="1"/></svg>') repeat;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Poppins', sans-serif;
+            color: #ffffff;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .hud-info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(15, 17, 21, 0.85);
+            border: 1px solid rgba(255, 30, 30, 0.3);
+            border-radius: 8px;
+            padding: 12px 18px;
+            font-size: 13px;
+            color: #aaa;
+            backdrop-filter: blur(8px);
+            z-index: 10;
+        }
+
+        .hud-info b {
+            color: #ff3333;
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* ------------------------------------------------------------- */
+        /* ICON HÌNH VIÊN THUỐC (FLOATING PILL BUTTON) CHO ĐẠI CA       */
+        /* ------------------------------------------------------------- */
+        .pill-toggle-btn {
+            position: absolute;
+            top: 60px;
+            left: 60px;
+            width: 110px;
+            height: 36px;
+            border-radius: 18px; /* Bo tròn bán nguyệt 2 đầu tạo hình viên thuốc */
+            background: rgba(16, 16, 20, 0.92);
+            border: 1.8px solid rgba(255, 40, 40, 0.9);
+            box-shadow: 0 0 15px rgba(255, 30, 30, 0.35), 0 4px 12px rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            gap: 10px;
+            cursor: grab;
+            z-index: 9999;
+            backdrop-filter: blur(10px);
+            transition: transform 0.1s ease, box-shadow 0.2s ease;
+        }
+
+        .pill-toggle-btn:active {
+            cursor: grabbing;
+            transform: scale(0.96);
+            box-shadow: 0 0 25px rgba(255, 30, 30, 0.6);
+        }
+
+        .pill-led {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: #00ff66;
+            box-shadow: 0 0 8px #00ff66;
+            transition: background 0.25s, box-shadow 0.25s;
+        }
+
+        .pill-led.closed {
+            background: #ff2222;
+            box-shadow: 0 0 8px #ff2222;
+        }
+
+        .pill-text {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 1.5px;
+            color: #f0f0f0;
+        }
+
+        /* ------------------------------------------------------------- */
+        /* MENU REIMAN PRIME: CHUẨN XÁC KÍCH THƯỚC 675 x 545 PX         */
+        /* ------------------------------------------------------------- */
+        .reiman-menu {
+            position: absolute;
+            width: 675px;
+            height: 545px;
+            background: rgba(12, 12, 16, 0.96);
+            border: 1.5px solid rgba(220, 30, 30, 0.65);
+            border-radius: 10px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.95), 0 0 35px rgba(255, 0, 0, 0.15);
+            backdrop-filter: blur(16px);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            z-index: 999;
+            transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+        }
+
+        .reiman-menu.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.92);
+        }
+
+        /* Header Bar */
+        .menu-header {
+            height: 55px;
+            background: rgba(16, 16, 20, 0.98);
+            border-bottom: 1.5px solid rgba(255, 30, 30, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            cursor: move;
+        }
+
+        .header-brand {
+            display: flex;
+            align-items: baseline;
+            gap: 12px;
+        }
+
+        .brand-name {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 19px;
+            font-weight: 900;
+            color: #ff2222;
+            letter-spacing: 2px;
+            text-shadow: 0 0 14px rgba(255, 0, 0, 0.7);
+        }
+
+        .brand-sub {
+            font-size: 11px;
+            color: #777;
+            letter-spacing: 1px;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .status-pill {
+            font-size: 10px;
+            font-weight: 700;
+            color: #00ff66;
+            background: rgba(0, 255, 102, 0.1);
+            border: 1px solid rgba(0, 255, 102, 0.35);
+            padding: 3px 10px;
+            border-radius: 12px;
+            letter-spacing: 1px;
+        }
+
+        .close-btn {
+            width: 28px;
+            height: 28px;
+            background: #1f1214;
+            border: 1px solid rgba(255, 50, 50, 0.4);
+            color: #ff5555;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .close-btn:hover {
+            background: #ff2222;
+            color: #fff;
+            box-shadow: 0 0 10px rgba(255, 34, 34, 0.5);
+        }
+
+        /* Body Split */
+        .menu-body {
+            flex: 1;
+            display: flex;
+            padding: 16px;
+            gap: 14px;
+        }
+
+        /* Nav Sidebar */
+        .nav-sidebar {
+            width: 145px;
+            background: rgba(18, 18, 24, 0.75);
+            border: 1px solid #252830;
+            border-radius: 8px;
+            padding: 12px 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .nav-btn {
+            background: #15151c;
+            border: 1px solid #2a2c36;
+            color: #aaa;
+            padding: 11px 0;
+            border-radius: 6px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+
+        .nav-btn:hover {
+            background: #231c20;
+            color: #fff;
+            border-color: rgba(255, 40, 40, 0.5);
+        }
+
+        .nav-btn.active {
+            background: linear-gradient(90deg, #aa1212 0%, #700b0b 100%);
+            color: #ffffff;
+            border-color: #ff3333;
+            box-shadow: 0 0 12px rgba(255, 30, 30, 0.35);
+        }
+
+        .minimize-btn {
+            margin-top: auto;
+            background: #14161a;
+            border: 1px solid #333;
+            color: #777;
+            padding: 9px 0;
+            border-radius: 6px;
+            font-size: 11px;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .minimize-btn:hover {
+            color: #fff;
+            border-color: #555;
+        }
+
+        /* Content Panel */
+        .content-panel {
+            flex: 1;
+            background: rgba(18, 18, 24, 0.75);
+            border: 1px solid #252830;
+            border-radius: 8px;
+            padding: 18px 22px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .section-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 12px;
+            font-weight: 800;
+            color: #ff3333;
+            letter-spacing: 1.5px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid rgba(255, 30, 30, 0.35);
+        }
+
+        /* Form Controls */
+        .toggle-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 0;
+        }
+
+        .toggle-label {
+            font-size: 13px;
+            color: #eee;
+        }
+
+        .imgui-switch {
+            position: relative;
+            width: 44px;
+            height: 22px;
+            background: #252730;
+            border-radius: 11px;
+            cursor: pointer;
+            transition: background 0.25s;
+        }
+
+        .imgui-switch::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #fff;
+            transition: transform 0.25s;
+        }
+
+        .imgui-switch.active {
+            background: #ff2222;
+            box-shadow: 0 0 10px rgba(255, 34, 34, 0.4);
+        }
+
+        .imgui-switch.active::after {
+            transform: translateX(22px);
+        }
+
+        .slider-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #bbb;
+        }
+
+        .slider-header span {
+            color: #ff4444;
+            font-family: monospace;
+            font-weight: bold;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #252730;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #ff2222;
+            cursor: pointer;
+            box-shadow: 0 0 8px rgba(255, 34, 34, 0.7);
+        }
+
+        .tab-view {
+            display: none;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .tab-view.active {
+            display: flex;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="hud-info">
+        <b>REIMAN PRIME iOS OVERLAY</b><br>
+        • Menu Size: <b>675 x 545 px</b> (Fixed ImGui Cond)<br>
+        • Pill Button: Bấm hoặc kéo tự do để Ẩn / Hiện Menu<br>
+        • Backend: Apple Metal (<code>imgui_impl_metal.mm</code>)
+    </div>
+
+    <!-- Nút hình viên thuốc (Floating Pill Icon) -->
+    <div class="pill-toggle-btn" id="pillButton">
+        <div class="pill-led" id="pillLed"></div>
+        <div class="pill-text">REIMAN</div>
+    </div>
+
+    <!-- Menu REIMAN PRIME: 675 x 545 px -->
+    <div class="reiman-menu" id="mainMenu">
+        <canvas id="menuParticles" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1;"></canvas>
+        <div class="menu-header" id="menuHeader" style="position:relative;z-index:2;">
+            <div class="header-brand">
+                <span class="brand-name">REIMAN PRIME</span>
+                <span class="brand-sub">| iOS METAL EDITION</span>
+            </div>
+            <div class="header-right">
+                <span class="status-pill">[ METAL ACTIVE ]</span>
+                <div class="close-btn" id="closeBtn">✕</div>
+            </div>
+        </div>
+
+        <div class="menu-body">
+            <!-- Navigation -->
+            <div class="nav-sidebar">
+                <div class="nav-btn active" data-tab="tab-aimbot">AIMBOT</div>
+                <div class="nav-btn" data-tab="tab-visuals">VISUALS</div>
+                <div class="nav-btn" data-tab="tab-chams">CHAMS</div>
+                <div class="nav-btn" data-tab="tab-settings">SETTINGS</div>
+                <div class="minimize-btn" id="minimizeBtn">MINIMIZE</div>
+            </div>
+
+            <!-- Content -->
+            <div class="content-panel">
+                <!-- Tab Aimbot -->
+                <div class="tab-view active" id="tab-aimbot">
+                    <div class="section-title">AIMBOT CONFIGURATION</div>
+                    <div class="toggle-item">
+                        <span class="toggle-label">Enable Silent Aimbot</span>
+                        <div class="imgui-switch active" onclick="this.classList.toggle('active')"></div>
+                    </div>
+                    <div class="toggle-item">
+                        <span class="toggle-label">Auto Fire / TriggerBot</span>
+                        <div class="imgui-switch" onclick="this.classList.toggle('active')"></div>
+                    </div>
+                    <div class="toggle-item">
+                        <span class="toggle-label">Draw FOV Circle</span>
+                        <div class="imgui-switch active" onclick="this.classList.toggle('active')"></div>
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-header">
+                            <label>Field of View (FOV)</label>
+                            <span id="fovVal">95°</span>
+                        </div>
+                        <input type="range" min="10" max="180" value="95" oninput="document.getElementById('fovVal').innerText = this.value + '°'">
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-header">
+                            <label>Smoothness Factor</label>
+                            <span id="smoothVal">4.2</span>
+                        </div>
+                        <input type="range" min="1" max="20" step="0.1" value="4.2" oninput="document.getElementById('smoothVal').innerText = this.value">
+                    </div>
+                </div>
+
+                <!-- Tab Visuals -->
+                <div class="tab-view" id="tab-visuals">
+                    <div class="section-title">VISUALS & ESP RADAR</div>
+                    <div class="toggle-item">
+                        <span class="toggle-label">2D Bounding Box</span>
+                        <div class="imgui-switch active" onclick="this.classList.toggle('active')"></div>
+                    </div>
+                    <div class="toggle-item">
+                        <span class="toggle-label">Bone Skeleton ESP</span>
+                        <div class="imgui-switch active" onclick="this.classList.toggle('active')"></div>
+                    </div>
+                    <div class="toggle-item">
+                        <span class="toggle-label">Snaplines (Bottom-Center)</span>
+                        <div class="imgui-switch" onclick="this.classList.toggle('active')"></div>
+                    </div>
+                    <div class="toggle-item">
+                        <span class="toggle-label">Health Bar & Distance</span>
+                        <div class="imgui-switch active" onclick="this.classList.toggle('active')"></div>
+                    </div>
+                </div>
+
+                <!-- Tab Chams -->
+                <div class="tab-view" id="tab-chams">
+                    <div class="section-title">WALLHACK CHAMS</div>
+                    <div class="toggle-item">
+                        <span class="toggle-label">Enable Metal Shader Chams</span>
+                        <div class="imgui-switch active" onclick="this.classList.toggle('active')"></div>
+                    </div>
+                    <div class="toggle-item">
+                        <span class="toggle-label">Wireframe Overlay Mode</span>
+                        <div class="imgui-switch" onclick="this.classList.toggle('active')"></div>
+                    </div>
+                </div>
+
+                <!-- Tab Settings -->
+                <div class="tab-view" id="tab-settings">
+                    <div class="section-title">SYSTEM CONFIGURATION</div>
+                    <div class="toggle-item">
+                        <span class="toggle-label">Show Floating Pill Button</span>
+                        <div class="imgui-switch active" onclick="this.classList.toggle('active')"></div>
+                    </div>
+                    <div class="toggle-item">
+                        <span class="toggle-label">Touch Vibrate Feedback</span>
+                        <div class="imgui-switch active" onclick="this.classList.toggle('active')"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const pill = document.getElementById('pillButton');
+        const pillLed = document.getElementById('pillLed');
+        const menu = document.getElementById('mainMenu');
+        const closeBtn = document.getElementById('closeBtn');
+        const minimizeBtn = document.getElementById('minimizeBtn');
+        const menuHeader = document.getElementById('menuHeader');
+
+        let isMenuOpen = true;
+        let isDraggingPill = false;
+        let pillStartX, pillStartY, pillInitialLeft, pillInitialTop;
+        let hasMoved = false;
+
+        // Toggle Menu
+        function setMenuVisible(visible) {
+            isMenuOpen = visible;
+            if (isMenuOpen) {
+                menu.classList.remove('hidden');
+                pillLed.classList.remove('closed');
+            } else {
+                menu.classList.add('hidden');
+                pillLed.classList.add('closed');
+            }
+        }
+
+        // Pill Drag & Click
+        pill.addEventListener('mousedown', (e) => {
+            isDraggingPill = true;
+            hasMoved = false;
+            pillStartX = e.clientX;
+            pillStartY = e.clientY;
+            pillInitialLeft = pill.offsetLeft;
+            pillInitialTop = pill.offsetTop;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDraggingPill) return;
+            const dx = e.clientX - pillStartX;
+            const dy = e.clientY - pillStartY;
+            if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+                hasMoved = true;
+            }
+            pill.style.left = (pillInitialLeft + dx) + 'px';
+            pill.style.top = (pillInitialTop + dy) + 'px';
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (isDraggingPill) {
+                isDraggingPill = false;
+                if (!hasMoved) {
+                    setMenuVisible(!isMenuOpen);
+                }
+            }
+        });
+
+        // Touch support for mobile simulation
+        pill.addEventListener('touchstart', (e) => {
+            isDraggingPill = true;
+            hasMoved = false;
+            const touch = e.touches[0];
+            pillStartX = touch.clientX;
+            pillStartY = touch.clientY;
+            pillInitialLeft = pill.offsetLeft;
+            pillInitialTop = pill.offsetTop;
+        });
+
+        window.addEventListener('touchmove', (e) => {
+            if (!isDraggingPill) return;
+            const touch = e.touches[0];
+            const dx = touch.clientX - pillStartX;
+            const dy = touch.clientY - pillStartY;
+            if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+                hasMoved = true;
+            }
+            pill.style.left = (pillInitialLeft + dx) + 'px';
+            pill.style.top = (pillInitialTop + dy) + 'px';
+        });
+
+        window.addEventListener('touchend', () => {
+            if (isDraggingPill) {
+                isDraggingPill = false;
+                if (!hasMoved) {
+                    setMenuVisible(!isMenuOpen);
+                }
+            }
+        });
+
+        closeBtn.addEventListener('click', () => setMenuVisible(false));
+        minimizeBtn.addEventListener('click', () => setMenuVisible(false));
+
+        // Drag Menu Window
+        let isDraggingMenu = false;
+        let menuStartX, menuStartY, menuInitialLeft, menuInitialTop;
+
+        menuHeader.addEventListener('mousedown', (e) => {
+            if (e.target === closeBtn) return;
+            isDraggingMenu = true;
+            menuStartX = e.clientX;
+            menuStartY = e.clientY;
+            menuInitialLeft = menu.offsetLeft;
+            menuInitialTop = menu.offsetTop;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDraggingMenu) return;
+            menu.style.left = (menuInitialLeft + (e.clientX - menuStartX)) + 'px';
+            menu.style.top = (menuInitialTop + (e.clientY - menuStartY)) + 'px';
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDraggingMenu = false;
+        });
+
+        // Tabs Switching
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-view').forEach(t => t.classList.remove('active'));
+                btn.classList.add('active');
+                const targetTab = btn.getAttribute('data-tab');
+                document.getElementById(targetTab).classList.add('active');
+            });
+        });
+
+        // Particles Animation (Port tu AnimVector.h)
+        const pCanvas = document.getElementById('menuParticles');
+        const pCtx = pCanvas.getContext('2d');
+        pCanvas.width = 675;
+        pCanvas.height = 545;
+
+        const particles = [];
+        for (let i = 0; i < 55; i++) {
+            particles.push({
+                x: Math.random() * 675,
+                y: Math.random() * 545,
+                vx: (Math.random() - 0.5) * 0.8,
+                vy: (Math.random() - 0.5) * 0.8,
+                r: Math.random() * 1.8 + 1.2,
+                a: Math.random() * 0.5 + 0.3
+            });
+        }
+
+        function animParticles() {
+            pCtx.clearRect(0, 0, 675, 545);
+            for (let i = 0; i < particles.length; i++) {
+                let p1 = particles[i];
+                p1.x += p1.vx;
+                p1.y += p1.vy;
+                if (p1.x < 0 || p1.x > 675) p1.vx *= -1;
+                if (p1.y < 0 || p1.y > 545) p1.vy *= -1;
+
+                pCtx.beginPath();
+                pCtx.arc(p1.x, p1.y, p1.r, 0, Math.PI * 2);
+                pCtx.fillStyle = `rgba(255, 30, 80, ${p1.a})`;
+                pCtx.fill();
+
+                for (let j = i + 1; j < particles.length; j++) {
+                    let p2 = particles[j];
+                    let dx = p1.x - p2.x;
+                    let dy = p1.y - p2.y;
+                    let dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 80) {
+                        pCtx.beginPath();
+                        pCtx.moveTo(p1.x, p1.y);
+                        pCtx.lineTo(p2.x, p2.y);
+                        pCtx.strokeStyle = `rgba(230, 20, 60, ${(1 - dist / 80) * 0.28})`;
+                        pCtx.lineWidth = 0.9;
+                        pCtx.stroke();
+                    }
+                }
+            }
+            requestAnimationFrame(animParticles);
+        }
+        animParticles();
+    </script>
+</body>
+</html>
