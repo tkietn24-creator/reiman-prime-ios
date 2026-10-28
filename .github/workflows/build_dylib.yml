@@ -26,7 +26,15 @@ jobs:
         run: |
           cd REIMAN_PRIME_iOS
           chmod +x build_mac.sh
-          ./build_mac.sh 2>&1 | tee build_output.log
+          bash -x ./build_mac.sh 2>&1 | tee ../build_output.log
+          EXIT_CODE=${PIPESTATUS[0]}
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "## ❌ Build Error Log:" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -n 100 ../build_output.log >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            exit $EXIT_CODE
+          fi
 
       - name: Upload Dylib Artifact for Dai Ca
         uses: actions/upload-artifact@v4
@@ -34,3 +42,11 @@ jobs:
           name: ReimanPrimeiOS-Dylib
           path: REIMAN_PRIME_iOS/ReimanPrimeiOS.dylib
           if-no-files-found: error
+
+      - name: Upload Debug Log if Failed
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Build-Debug-Log
+          path: build_output.log
+          if-no-files-found: ignore
