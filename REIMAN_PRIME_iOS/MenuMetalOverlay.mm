@@ -52,8 +52,8 @@ static void InitOrUpdateParticles(ImVec2 min_bounds, ImVec2 max_bounds) {
     if (g_particles.empty()) {
         for (int i = 0; i < MAX_PARTICLES; ++i) {
             NetworkParticle p;
-            p.pos = ImVec2(min_bounds.x + (float)(rand() % (int)(max_bounds.x - min_bounds.x + 1)),
-                           min_bounds.y + (float)(rand() % (int)(max_bounds.y - min_bounds.y + 1)));
+            p.pos = ImVec2(min_bounds.x + (float)(rand() % (int)(std::max(1.0f, max_bounds.x - min_bounds.x + 1.0f))),
+                           min_bounds.y + (float)(rand() % (int)(std::max(1.0f, max_bounds.y - min_bounds.y + 1.0f))));
             p.vel = ImVec2(((float)(rand() % 100) / 50.0f - 1.0f) * 0.45f,
                            ((float)(rand() % 100) / 50.0f - 1.0f) * 0.45f);
             p.radius = 1.5f + (float)(rand() % 20) / 10.0f;
@@ -117,9 +117,16 @@ static ImVec2 pill_pos = ImVec2(50.0f, 60.0f);
 static bool pill_dragging = false;
 static ImVec2 pill_drag_offset = ImVec2(0.0f, 0.0f);
 
-// Kích thước menu theo đúng chuẩn chỉ lệnh Đại ca: 675 x 545 px
+// Tọa độ và kích thước thực tế của Menu REIMAN PRIME (Đồng bộ với HitTest cảm ứng)
+static ImVec2 g_menu_pos = ImVec2(70.0f, 40.0f);
+static ImVec2 g_menu_size = ImVec2(675.0f, 545.0f);
+
+// Kích thước menu chuẩn theo chỉ lệnh Đại ca: 675 x 545 px
 static const float MENU_WIDTH = 675.0f;
 static const float MENU_HEIGHT = 545.0f;
+
+// Trạng thái khởi tạo overlay
+static BOOL s_isInitialized = NO;
 
 // Cấu hình Aimbot
 static bool aimbot_enabled = true;
@@ -321,12 +328,30 @@ static void DrawTypewriterHeader(ImDrawList* draw_list, ImVec2 base_pos) {
 
 // ============================================================================
 // VẼ GIAO DIỆN CHÍNH MENU REIMAN PRIME: CHUẨN XÁC KÍCH THƯỚC 675 x 545 PX
+// TỰ ĐỘNG THÍCH ỨNG THEO MÀN HÌNH LANDSCAPE CỦA IPHONE/IPAD MÀ KHÔNG BỊ TRÀN
 // ============================================================================
 static void DrawReimanPrimeMainMenu() {
     if (!show_menu) return;
 
-    // Ép kích thước cố định chuẩn xác 675 x 545 px cho Đại ca
-    ImGui::SetNextWindowSize(ImVec2(MENU_WIDTH, MENU_HEIGHT), ImGuiCond_Always);
+    ImGuiIO& io = ImGui::GetIO();
+
+    // Tính toán kích thước thích ứng chuẩn 675 x 545 px
+    float actual_width = MENU_WIDTH;
+    float actual_height = MENU_HEIGHT;
+
+    // Nếu màn hình iPhone nhỏ hơn 675x545 ở chế độ ngang, căn chỉnh để không bị khuất nút bấm
+    if (io.DisplaySize.x > 200.0f && io.DisplaySize.x < (MENU_WIDTH + 20.0f)) {
+        actual_width = io.DisplaySize.x - 20.0f;
+    }
+    if (io.DisplaySize.y > 200.0f && io.DisplaySize.y < (MENU_HEIGHT + 20.0f)) {
+        actual_height = io.DisplaySize.y - 20.0f;
+    }
+
+    g_menu_size = ImVec2(actual_width, actual_height);
+
+    // Ép kích thước cố định chuẩn xác cho Đại ca
+    ImGui::SetNextWindowSize(g_menu_size, ImGuiCond_Always);
+    ImGui::SetNextWindowPos(ImVec2(70.0f, 30.0f), ImGuiCond_FirstUseEver);
 
     ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoResize |
                                     ImGuiWindowFlags_NoCollapse |
@@ -336,6 +361,10 @@ static void DrawReimanPrimeMainMenu() {
         ImDrawList* draw_list = ImGui::GetWindowDrawList();
         ImVec2 win_pos = ImGui::GetWindowPos();
         ImVec2 win_size = ImGui::GetWindowSize();
+
+        // Cập nhật tọa độ Menu thời gian thực để Touch HitTest chuẩn xác 100%
+        g_menu_pos = win_pos;
+        g_menu_size = win_size;
 
         // 1. ĐỔ BÓNG NGOÀI NEON RED TOẢ ÁNH SÁNG XUNG QUANH TOÀN MENU
         draw_list->AddRect(ImVec2(win_pos.x - 2, win_pos.y - 2),
@@ -373,12 +402,12 @@ static void DrawReimanPrimeMainMenu() {
 
         // 4. KHU VỰC CỘT TRÁI (DANH SÁCH TAB) & CỘT PHẢI (NỘI DUNG TÍNH NĂNG)
         const float nav_width = 145.0f;
-        const float content_height = MENU_HEIGHT - 80.0f;
+        const float content_height = win_size.y - 80.0f;
 
         // Cột trái: Tab điều hướng với màu đỏ Cyber
         ImGui::BeginChild("##NavColumn", ImVec2(nav_width, content_height), true);
         {
-            ImVec2 tab_size = ImVec2(nav_width - 20.0f, 44.0f);
+            ImVec2 tab_size = ImVec2(nav_width - 20.0f, 40.0f);
 
             // Nút tab với hiệu ứng đổi màu và glow
             if (active_tab == 0) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.80f, 0.08f, 0.28f, 1.0f));
@@ -401,8 +430,8 @@ static void DrawReimanPrimeMainMenu() {
             if (active_tab == 3) ImGui::PopStyleColor();
 
             // Nút thu nhỏ menu xuống thanh viên thuốc
-            ImGui::SetCursorPosY(content_height - 55.0f);
-            if (ImGui::Button("MINIMIZE", ImVec2(nav_width - 20.0f, 36.0f))) {
+            ImGui::SetCursorPosY(content_height - 50.0f);
+            if (ImGui::Button("MINIMIZE", ImVec2(nav_width - 20.0f, 34.0f))) {
                 show_menu = false;
             }
         }
@@ -478,16 +507,16 @@ static void DrawReimanPrimeMainMenu() {
 
                 ImGui::Spacing();
                 if (ImGui::Button("Save Configuration", ImVec2(220.0f, 36.0f))) {
-                    // Logic lưu config
+                    // Logic lưu cấu hình tùy chỉnh
                 }
 
                 ImGui::SameLine();
                 if (ImGui::Button("Load Configuration", ImVec2(220.0f, 36.0f))) {
-                    // Logic nạp config
+                    // Logic tải cấu hình tùy chỉnh
                 }
 
                 ImGui::Spacing();
-                ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Tip: Chạm vào viên thuốc trên màn hình để bật/tắt Menu.");
+                ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Tip: Cham vao vien thuoc tren man hinh de bat/tat Menu.");
             }
         }
         ImGui::EndChild();
@@ -496,7 +525,7 @@ static void DrawReimanPrimeMainMenu() {
 }
 
 // ============================================================================
-// LỚP OVERLAY METAL CHO IOS (WINDOW VÀ MTKVIEW CHẠY TRỰC TIẾP)
+// LỚP OVERLAY METAL CHO IOS (UIVIEW SUBCLASS TƯƠNG THÍCH 100% VỚI UNITY/FREE FIRE)
 // ============================================================================
 @implementation MenuMetalOverlay
 
@@ -509,50 +538,161 @@ static void DrawReimanPrimeMainMenu() {
     return instance;
 }
 
+// Hàm tìm kiếm Window đang hoạt động của game Free Fire (Unity Engine)
++ (UIWindow *)findGameWindow {
+    UIWindow *targetWindow = nil;
+
+    // 1. Tìm thông qua UIWindowScene trên iOS 13+ đến iOS 18+
+    if (@available(iOS 13.0, *)) {
+        for (UIScene *scene in [UIApplication sharedApplication].connectedScenes) {
+            if (scene.activationState == UISceneActivationStateForegroundActive && [scene isKindOfClass:[UIWindowScene class]]) {
+                UIWindowScene *windowScene = (UIWindowScene *)scene;
+                for (UIWindow *w in windowScene.windows) {
+                    if (w.isKeyWindow || !w.hidden) {
+                        targetWindow = w;
+                        break;
+                    }
+                }
+            }
+            if (targetWindow) break;
+        }
+    }
+
+    // 2. Fallback duyệt toàn bộ danh sách windows của ứng dụng
+    if (!targetWindow) {
+        for (UIWindow *w in [UIApplication sharedApplication].windows) {
+            if (w.isKeyWindow || !w.hidden) {
+                targetWindow = w;
+                break;
+            }
+        }
+    }
+
+    // 3. Fallback lấy keyWindow hoặc window đầu tiên trong mảng
+    if (!targetWindow) {
+        targetWindow = [UIApplication sharedApplication].keyWindow;
+    }
+    if (!targetWindow && [UIApplication sharedApplication].windows.count > 0) {
+        targetWindow = [UIApplication sharedApplication].windows.firstObject;
+    }
+
+    return targetWindow;
+}
+
 - (void)setupOverlay {
-    // Tầng hiển thị cao nhất đè lên tất cả ứng dụng và game trên iOS
-    self.windowLevel = UIWindowLevelAlert + 100.0f;
-    self.backgroundColor = [UIColor clearColor];
-    self.hidden = NO;
-    self.userInteractionEnabled = YES;
+    @try {
+        if (s_isInitialized) {
+            return;
+        }
 
-    // Khởi tạo Apple Metal Device & Command Queue
-    self.device = MTLCreateSystemDefaultDevice();
-    self.commandQueue = [self.device newCommandQueue];
+        UIWindow *gameWindow = [MenuMetalOverlay findGameWindow];
+        // Nếu cửa sổ game chưa sẵn sàng hoặc kích thước chưa được layout thì thử lại sau 1 giây
+        if (!gameWindow || gameWindow.bounds.size.width < 100.0f || gameWindow.bounds.size.height < 100.0f) {
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                [self setupOverlay];
+            });
+            return;
+        }
 
-    // Khởi tạo MTKView trong suốt bao phủ toàn bộ màn hình
-    self.metalView = [[MTKView alloc] initWithFrame:self.bounds device:self.device];
-    self.metalView.delegate = self;
-    self.metalView.clearColor = MTLClearColorMake(0.0f, 0.0f, 0.0f, 0.0f);
-    self.metalView.backgroundColor = [UIColor clearColor];
-    self.metalView.framebufferOnly = NO;
-    self.metalView.opaque = NO;
-    self.metalView.preferredFramesPerSecond = 120; // Hỗ trợ 120Hz ProMotion trên iPhone/iPad
-    [self addSubview:self.metalView];
+        // Thiết lập kích thước UIView phủ vừa khít cửa sổ game Free Fire
+        self.frame = gameWindow.bounds;
+        self.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        self.backgroundColor = [UIColor clearColor];
+        self.userInteractionEnabled = YES;
+        self.opaque = NO;
 
-    UIViewController *rootVC = [[UIViewController alloc] init];
-    rootVC.view.backgroundColor = [UIColor clearColor];
-    self.rootViewController = rootVC;
+        // Khởi tạo Apple Metal Device & Command Queue
+        self.device = MTLCreateSystemDefaultDevice();
+        if (!self.device) {
+            return;
+        }
+        self.commandQueue = [self.device newCommandQueue];
 
-    // Khởi tạo ImGui Context
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO();
-    io.IniFilename = NULL;
+        // Khởi tạo MTKView trong suốt bao phủ toàn bộ màn hình
+        self.metalView = [[MTKView alloc] initWithFrame:self.bounds device:self.device];
+        self.metalView.delegate = self;
+        self.metalView.clearColor = MTLClearColorMake(0.0f, 0.0f, 0.0f, 0.0f);
+        self.metalView.backgroundColor = [UIColor clearColor];
+        self.metalView.framebufferOnly = NO;
+        self.metalView.opaque = NO;
+        self.metalView.preferredFramesPerSecond = 120; // Hỗ trợ 120Hz ProMotion trên iPhone/iPad
+        self.metalView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        [self addSubview:self.metalView];
 
-    CGFloat scale = [UIScreen mainScreen].nativeScale;
-    io.DisplaySize = ImVec2(self.bounds.size.width, self.bounds.size.height);
-    io.DisplayFramebufferScale = ImVec2(scale, scale);
+        // Khởi tạo Dear ImGui Context
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+        ImGuiIO& io = ImGui::GetIO();
+        io.IniFilename = NULL; // Tắt hoàn toàn việc ghi file ini để không bao giờ văng do iOS Sandbox Permission
 
-    // Kích hoạt giao diện REIMAN PRIME Cyber Red
-    ApplyReimanPrimeTheme();
+        CGFloat scale = [UIScreen mainScreen].nativeScale;
+        if (scale <= 0.0f) scale = 2.0f;
+        io.DisplayFramebufferScale = ImVec2(scale, scale);
+        io.DisplaySize = ImVec2(self.bounds.size.width, self.bounds.size.height);
 
-    // Khởi tạo Backend Metal của Dear ImGui
-    ImGui_ImplMetal_Init(self.device);
+        // Kích hoạt giao diện REIMAN PRIME Cyber Red
+        ApplyReimanPrimeTheme();
+
+        // Khởi tạo Backend Metal của Dear ImGui
+        ImGui_ImplMetal_Init(self.device);
+
+        // Gắn thẳng Overlay vào làm lớp con trên cùng của Game Window Free Fire
+        [gameWindow addSubview:self];
+        [gameWindow bringSubviewToFront:self];
+
+        s_isInitialized = YES;
+    } @catch (NSException *exception) {
+        // Bắt mọi ngoại lệ để không bao giờ làm văng game của Đại ca
+    }
+}
+
+// Cập nhật lại khung nhìn khi xoay màn hình điện thoại
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    if (self.superview) {
+        self.frame = self.superview.bounds;
+        self.metalView.frame = self.bounds;
+        if (ImGui::GetCurrentContext()) {
+            ImGuiIO& io = ImGui::GetIO();
+            io.DisplaySize = ImVec2(self.bounds.size.width, self.bounds.size.height);
+        }
+    }
+}
+
+// ============================================================================
+// HỆ THỐNG XUYÊN THẤU CẢM ỨNG (TOUCH PASSTHROUGH) CHO PHÉP CHƠI GAME KHÔNG BỊ CHẶN
+// Chỉ nhận cảm ứng khi chạm đúng vào Viên thuốc hoặc Menu, còn lại nhường 100% cho Free Fire
+// ============================================================================
+- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+    if (!self.userInteractionEnabled || self.hidden || self.alpha < 0.01) {
+        return nil;
+    }
+
+    // 1. Kiểm tra nếu chạm vào icon hình viên thuốc (Pill icon)
+    if (show_pill_icon) {
+        const float pill_width = 115.0f;
+        const float pill_height = 38.0f;
+        CGRect pillRect = CGRectMake(pill_pos.x - 10.0f, pill_pos.y - 10.0f, pill_width + 20.0f, pill_height + 20.0f);
+        if (CGRectContainsPoint(pillRect, point)) {
+            return self;
+        }
+    }
+
+    // 2. Kiểm tra nếu chạm vào khung Menu REIMAN PRIME (khi Menu đang mở)
+    if (show_menu) {
+        CGRect menuRect = CGRectMake(g_menu_pos.x, g_menu_pos.y, g_menu_size.x, g_menu_size.y);
+        if (CGRectContainsPoint(menuRect, point)) {
+            return self;
+        }
+    }
+
+    // 3. Nếu chạm ra ngoài: trả về nil để xuyên thấu 100% cảm ứng vào game Free Fire
+    return nil;
 }
 
 // Xử lý Touch Input từ ngón tay truyền vào Dear ImGui
 - (void)updateTouch:(UIEvent *)event isDown:(bool)isDown {
+    if (!ImGui::GetCurrentContext()) return;
     ImGuiIO& io = ImGui::GetIO();
     NSSet *touches = [event allTouches];
     for (UITouch *touch in touches) {
@@ -589,18 +729,45 @@ static void DrawReimanPrimeMainMenu() {
 #pragma mark - MTKViewDelegate
 
 - (void)mtkView:(MTKView *)view drawableSizeWillChange:(CGSize)size {
-    ImGuiIO& io = ImGui::GetIO();
-    io.DisplaySize = ImVec2(self.bounds.size.width, self.bounds.size.height);
+    if (ImGui::GetCurrentContext()) {
+        ImGuiIO& io = ImGui::GetIO();
+        io.DisplaySize = ImVec2(self.bounds.size.width, self.bounds.size.height);
+    }
 }
 
 - (void)drawInMTKView:(MTKView *)view {
-    ImGuiIO& io = ImGui::GetIO();
-    io.DeltaTime = 1.0f / (float)view.preferredFramesPerSecond;
+    @try {
+        if (!s_isInitialized || !ImGui::GetCurrentContext()) {
+            return;
+        }
 
-    id<MTLCommandBuffer> commandBuffer = [self.commandQueue commandBuffer];
-    MTLRenderPassDescriptor *renderPassDescriptor = view.currentRenderPassDescriptor;
+        id<CAMetalDrawable> drawable = view.currentDrawable;
+        MTLRenderPassDescriptor *renderPassDescriptor = view.currentRenderPassDescriptor;
 
-    if (renderPassDescriptor != nil) {
+        // Nếu drawable hoặc renderPass chưa sẵn sàng thì bỏ qua frame này, tuyệt đối không commit rỗng
+        if (!drawable || !renderPassDescriptor) {
+            return;
+        }
+
+        // Đảm bảo overlay luôn nổi lên trên cùng mỗi vài giây phòng khi Free Fire load màn chơi
+        static int s_frontCounter = 0;
+        if (++s_frontCounter % 120 == 0) {
+            if (self.superview && [self.superview.subviews lastObject] != self) {
+                [self.superview bringSubviewToFront:self];
+            }
+        }
+
+        ImGuiIO& io = ImGui::GetIO();
+        float fps = (float)view.preferredFramesPerSecond;
+        if (fps <= 0.0f) fps = 60.0f;
+        io.DeltaTime = 1.0f / fps;
+        io.DisplaySize = ImVec2(view.bounds.size.width, view.bounds.size.height);
+
+        id<MTLCommandBuffer> commandBuffer = [self.commandQueue commandBuffer];
+        if (!commandBuffer) {
+            return;
+        }
+
         ImGui_ImplMetal_NewFrame(renderPassDescriptor);
         ImGui::NewFrame();
 
@@ -613,24 +780,39 @@ static void DrawReimanPrimeMainMenu() {
         // Render toàn bộ lệnh vẽ ra Metal Pipeline
         ImGui::Render();
         id<MTLRenderCommandEncoder> renderEncoder = [commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
-        [renderEncoder pushDebugGroup:@"ReimanPrimeMetalRender"];
-        ImGui_ImplMetal_RenderDrawData(ImGui::GetDrawData(), commandBuffer, renderEncoder);
-        [renderEncoder popDebugGroup];
-        [renderEncoder endEncoding];
+        if (renderEncoder) {
+            [renderEncoder pushDebugGroup:@"ReimanPrimeMetalRender"];
+            ImGui_ImplMetal_RenderDrawData(ImGui::GetDrawData(), commandBuffer, renderEncoder);
+            [renderEncoder popDebugGroup];
+            [renderEncoder endEncoding];
+        }
 
-        [commandBuffer presentDrawable:view.currentDrawable];
+        [commandBuffer presentDrawable:drawable];
+        [commandBuffer commit];
+    } @catch (NSException *exception) {
+        // Bắt ngoại lệ render an toàn
     }
-
-    [commandBuffer commit];
 }
 
 @end
 
 // ============================================================================
-// HÀM KHỞI CHẠY TỰ ĐỘNG KHI DYLIB NẠP VÀO APP HOẶC GAME
+// HÀM KHỞI CHẠY TỰ ĐỘNG KHI DYLIB NẠP VÀO APP HOẶC GAME FREE FIRE
+// Đợi game khởi động xong hoàn toàn mới nạp Menu để tránh văng trong lúc load splash/movie
 // ============================================================================
 __attribute__((constructor)) static void InitializeReimanPrimeHook() {
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+    // 1. Lắng nghe thông báo khi Free Fire đã kết thúc quá trình khởi động ban đầu
+    [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationDidFinishLaunchingNotification
+                                                      object:nil
+                                                       queue:[NSOperationQueue mainQueue]
+                                                  usingBlock:^(NSNotification * _Nonnull note) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            [[MenuMetalOverlay sharedInstance] setupOverlay];
+        });
+    }];
+
+    // 2. Kích hoạt timer dự phòng 5 giây (phòng trường hợp dylib nạp sau khi notification đã kích hoạt)
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         [[MenuMetalOverlay sharedInstance] setupOverlay];
     });
 }
