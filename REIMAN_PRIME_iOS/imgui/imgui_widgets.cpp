@@ -35,7 +35,6 @@ Index of this file:
 #include "imgui.h"
 #include <map>
 #include <string>
-#include "examples/example_win32_directx11/imgui_settings.h"
 #ifndef IMGUI_DISABLE
 
 #ifndef IMGUI_DEFINE_MATH_OPERATORS
@@ -49,9 +48,6 @@ Index of this file:
 #else
 #include <stdint.h>     // intptr_t
 #endif
-#include <ranges>
-#include <examples/example_win32_directx11/color.h>
-#include <d3d11.h>
 
 //-------------------------------------------------------------------------
 // Warnings
