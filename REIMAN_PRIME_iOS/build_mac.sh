@@ -9,9 +9,10 @@ set -e
 echo "[+] Bat dau build REIMAN PRIME iOS Dylib cho Dai ca..."
 
 SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
+echo "[+] Su dung iOS SDK tai: $SDK_PATH"
 OUTPUT="ReimanPrimeiOS.dylib"
 
-xcrun -sdk iphoneos clang++ -arch arm64 -shared \
+xcrun -sdk iphoneos clang++ -dynamiclib -arch arm64 \
     -isysroot "$SDK_PATH" \
     -miphoneos-version-min=14.0 \
     -fobjc-arc \
@@ -22,6 +23,8 @@ xcrun -sdk iphoneos clang++ -arch arm64 -shared \
     -framework Metal \
     -framework MetalKit \
     -framework QuartzCore \
+    -undefined dynamic_lookup \
+    -install_name @rpath/ReimanPrimeiOS.dylib \
     -Iimgui \
     -Iimgui/backends \
     MenuMetalOverlay.mm \
@@ -34,10 +37,12 @@ xcrun -sdk iphoneos clang++ -arch arm64 -shared \
 
 echo "[+] Ky ma gia lap (Ad-hoc Code Sign voi ldid) de bypass iOS Security..."
 if command -v ldid &> /dev/null; then
-    ldid -S "$OUTPUT"
+    ldid -S "$OUTPUT" || true
     echo "[+] Da ky ldid thanh cong!"
-else
-    codesign -f -s - "$OUTPUT"
+fi
+
+if command -v codesign &> /dev/null; then
+    codesign -f -s - "$OUTPUT" || true
     echo "[+] Da ky codesign ad-hoc thanh cong!"
 fi
 
