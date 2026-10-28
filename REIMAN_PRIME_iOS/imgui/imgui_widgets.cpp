@@ -34,6 +34,7 @@ Index of this file:
 
 #ifndef _WIN32
 #define strcpy_s(dst, src) strcpy(dst, src)
+typedef void ID3D11ShaderResourceView;
 #endif
 
 #include "imgui.h"
