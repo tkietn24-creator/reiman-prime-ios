@@ -26,7 +26,7 @@ jobs:
         run: |
           cd REIMAN_PRIME_iOS
           chmod +x build_mac.sh
-          ./build_mac.sh
+          ./build_mac.sh 2>&1 | tee build_output.log
 
       - name: Upload Dylib Artifact for Dai Ca
         uses: actions/upload-artifact@v4
