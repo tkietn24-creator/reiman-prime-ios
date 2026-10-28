@@ -8,6 +8,14 @@ set -e
 
 echo "[+] Bat dau build REIMAN PRIME iOS Dylib cho Dai ca..."
 
+if [ -d "/Applications" ]; then
+    LATEST_XCODE=$(find /Applications -maxdepth 1 -name "Xcode*.app" | sort -V | tail -n 1)
+    if [ -n "$LATEST_XCODE" ]; then
+        echo "[+] Kich hoat Xcode Developer tai: $LATEST_XCODE"
+        export DEVELOPER_DIR="$LATEST_XCODE/Contents/Developer"
+    fi
+fi
+
 SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
 echo "[+] Su dung iOS SDK tai: $SDK_PATH"
 OUTPUT="ReimanPrimeiOS.dylib"
